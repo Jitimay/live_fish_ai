@@ -28,3 +28,5 @@ class CameraLoadFailure extends CameraState {
   @override
   List<Object> get props => [message];
 }
+
+class CameraLogSuccess extends CameraState {}

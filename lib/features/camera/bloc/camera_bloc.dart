@@ -1,9 +1,12 @@
-import 'package:bloc/bloc.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:camera/camera.dart';
 import 'package:equatable/equatable.dart';
+import 'package:hive/hive.dart';
 import 'package:live_fish_ai/models/detection.dart';
+import 'package:live_fish_ai/models/fish_catch.dart';
 import 'package:live_fish_ai/services/tflite_service.dart';
 import 'package:permission_handler/permission_handler.dart';
+import 'package:uuid/uuid.dart';
 
 part 'camera_event.dart';
 part 'camera_state.dart';
@@ -19,6 +22,7 @@ class CameraBloc extends Bloc<CameraEvent, CameraState> {
     on<CameraStarted>(_onCameraStarted);
     on<CameraStopped>(_onCameraStopped);
     on<CameraFrameSent>(_onCameraFrameSent);
+    on<CameraCatchLogged>(_onCameraCatchLogged);
   }
 
   Future<void> _onCameraStarted(
@@ -69,13 +73,32 @@ class CameraBloc extends Bloc<CameraEvent, CameraState> {
   ) async {
     if (_isProcessing) return;
     _isProcessing = true;
-    
+
     final detections = await _tfliteService.runInference(event.cameraImage);
     if (detections != null) {
       emit(CameraReady(detections: detections));
     }
-    
+
     _isProcessing = false;
+  }
+
+  Future<void> _onCameraCatchLogged(
+    CameraCatchLogged event,
+    Emitter<CameraState> emit,
+  ) async {
+    final box = Hive.box<FishCatch>('fish_catches');
+    final isJuvenile = event.detection.box.width < 100; // Example threshold
+    final fishCatch = FishCatch(
+      id: const Uuid().v4(),
+      species: event.detection.className,
+      length: event.detection.box.width, // This is not accurate, just a placeholder
+      confidence: event.detection.confidence,
+      timestamp: DateTime.now(),
+      isJuvenile: isJuvenile,
+    );
+    await box.add(fishCatch);
+    emit(CameraLogSuccess());
+    emit(CameraReady(detections: (state as CameraReady).detections));
   }
 
   @override

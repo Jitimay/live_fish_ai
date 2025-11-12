@@ -19,3 +19,12 @@ class CameraFrameSent extends CameraEvent {
   @override
   List<Object> get props => [cameraImage];
 }
+
+class CameraCatchLogged extends CameraEvent {
+  final Detection detection;
+
+  const CameraCatchLogged(this.detection);
+
+  @override
+  List<Object> get props => [detection];
+}
